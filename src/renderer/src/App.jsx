@@ -18,6 +18,32 @@ function App() {
     }
   }, [screenStream])
 
+  // Ensure cleanup on unmount / window close: stop any active tracks
+  useEffect(() => {
+    const stopTracks = () => {
+      try {
+        if (screenStream) {
+          screenStream.getTracks().forEach((t) => t.stop())
+        }
+        if (audioStream) {
+          audioStream.getTracks().forEach((t) => t.stop())
+        }
+      } catch (e) {
+        console.warn('Cleanup error stopping tracks:', e)
+      }
+    }
+
+    // Handle tab/window close (in Electron renderer)
+    window.addEventListener('beforeunload', stopTracks)
+
+    // Cleanup when component unmounts or dependencies change
+    return () => {
+      window.removeEventListener('beforeunload', stopTracks)
+      stopTracks()
+    }
+    // Re-run if streams change so we always close the latest references
+  }, [screenStream, audioStream])
+
   const startConversation = async () => {
     try {
       // Request screen capture stream
